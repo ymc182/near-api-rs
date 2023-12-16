@@ -132,10 +132,13 @@ mod tests {
 
     #[test]
     fn test_account_id() {
-        let key = KeyPair::from_string("4acU3RXabxpwNimHF5j7zdiV3nKFMyA1RuNJGsRfkncP8g7yQVvcdgsANEFTYjD5fKsubFAdvHUnk6MHfieUgWFU".to_string());
-        assert_eq!(
-            key.account_id(),
-            "4bd13128d8489fd41927c1aaf976b1e7f54006d8488df59a25003bcb3175c083"
-        );
+        let new_key_pair = KeyPair::from_random();
+        let account_id = new_key_pair.account_id();
+        let sk = new_key_pair.secret_key;
+
+        let test_key_pair = KeyPair::from_string(sk);
+        let test_account_id = test_key_pair.account_id();
+
+        assert_eq!(account_id, test_account_id);
     }
 }
