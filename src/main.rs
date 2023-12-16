@@ -57,12 +57,7 @@ impl KeyPair {
             .unwrap();
 
         let secret_key_bytes: [u8; 32] = combined_key_bytes[..32].try_into().unwrap();
-
-        let secret_key = ed25519_dalek::SigningKey::from_bytes(&secret_key_bytes);
-        let public_key = secret_key.verifying_key();
-
-        let secret_key_bytes = secret_key.to_bytes();
-        let public_key_bytes = public_key.to_bytes();
+        let public_key_bytes: [u8; 32] = combined_key_bytes[32..].try_into().unwrap();
 
         let secret_key_str = bs58::encode(secret_key_bytes);
         let public_key_str = bs58::encode(public_key_bytes);
@@ -138,8 +133,9 @@ mod tests {
     #[test]
     fn test_account_id() {
         let key = KeyPair::from_string("4acU3RXabxpwNimHF5j7zdiV3nKFMyA1RuNJGsRfkncP8g7yQVvcdgsANEFTYjD5fKsubFAdvHUnk6MHfieUgWFU".to_string());
-        println!("public key {}", key.public_key);
-        println!("secret key {}", key.secret_key);
-        println!("account id {}", key.account_id());
+        assert_eq!(
+            key.account_id(),
+            "4bd13128d8489fd41927c1aaf976b1e7f54006d8488df59a25003bcb3175c083"
+        );
     }
 }
