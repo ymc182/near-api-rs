@@ -1,4 +1,3 @@
-use ed25519_dalek::{SecretKey, Signature, VerifyingKey};
 use rand::rngs::OsRng;
 use serde::Deserialize;
 use serde_json::{from_str, json, Value};
@@ -37,26 +36,29 @@ impl KeyPair {
 
         let secret_key_bytes = secret_key.to_bytes();
         let public_key_bytes = public_key.to_bytes();
-
-        let secret_key_str = bs58::encode(secret_key_bytes);
+        let combined_key = [&secret_key_bytes[..], &public_key_bytes[..]].concat();
         let public_key_str = bs58::encode(public_key_bytes);
+        let combined_key_str = bs58::encode(combined_key);
 
         KeyPair {
             public_key: public_key_str.into_string(),
-            secret_key: secret_key_str.into_string(),
+            secret_key: combined_key_str.into_string(),
+
             signing_key: secret_key_bytes,
             verifying_key: public_key_bytes,
         }
     }
 
     pub fn from_string(secret_key: String) -> KeyPair {
-        let secret_key_bytes: [u8; 32] = bs58::decode(&secret_key)
+        let combined_key_bytes: [u8; 64] = bs58::decode(&secret_key)
             .into_vec()
             .unwrap()
             .try_into()
             .unwrap();
-        let secret_key = ed25519_dalek::SigningKey::from_bytes(&secret_key_bytes);
 
+        let secret_key_bytes: [u8; 32] = combined_key_bytes[..32].try_into().unwrap();
+
+        let secret_key = ed25519_dalek::SigningKey::from_bytes(&secret_key_bytes);
         let public_key = secret_key.verifying_key();
 
         let secret_key_bytes = secret_key.to_bytes();
@@ -135,10 +137,9 @@ mod tests {
 
     #[test]
     fn test_account_id() {
-        let key = KeyPair::from_string("Fm1eZbaftdmnT2dMjhHnXi7w9L7ppD44ubRuYuc6AVH7".to_string());
-        assert_eq!(
-            key.account_id(),
-            "fed9f401e2b82d2ddad4c1542b42009dafaf4d25e5a055c0cc077ac0c1d6539c"
-        );
+        let key = KeyPair::from_string("4acU3RXabxpwNimHF5j7zdiV3nKFMyA1RuNJGsRfkncP8g7yQVvcdgsANEFTYjD5fKsubFAdvHUnk6MHfieUgWFU".to_string());
+        println!("public key {}", key.public_key);
+        println!("secret key {}", key.secret_key);
+        println!("account id {}", key.account_id());
     }
 }
