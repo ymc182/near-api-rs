@@ -127,18 +127,18 @@ async fn main() {
     let near = Near {
         rpc_url: "https://rpc.mainnet.near.org".to_string(),
     };
+}
 
-    let new_key = KeyPair::from_random();
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    println!("{:?}", new_key);
-    println!("Account Id:{}", new_key.account_id());
-
-    let key = KeyPair::from_string("Fm1eZbaftdmnT2dMjhHnXi7w9L7ppD44ubRuYuc6AVH7".to_string());
-
-    println!("{:?}", key);
-    //Id:fed9f401e2b82d2ddad4c1542b42009dafaf4d25e5a055c0cc077ac0c1d6539c
-    println!("Account Id:{}", key.account_id());
-    let account_id = "ewtd.near".to_string();
-    let account = near.view_account(account_id).await.unwrap();
-    println!("{:?}", account);
+    #[test]
+    fn test_account_id() {
+        let key = KeyPair::from_string("Fm1eZbaftdmnT2dMjhHnXi7w9L7ppD44ubRuYuc6AVH7".to_string());
+        assert_eq!(
+            key.account_id(),
+            "fed9f401e2b82d2ddad4c1542b42009dafaf4d25e5a055c0cc077ac0c1d6539c"
+        );
+    }
 }
