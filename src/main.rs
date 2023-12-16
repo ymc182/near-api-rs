@@ -1,10 +1,6 @@
-use rand::rngs::OsRng;
 use serde::Deserialize;
 use serde_json::{from_str, json, Value};
-pub struct Near {
-    pub rpc_url: String,
-}
-
+mod key_pair;
 #[derive(Deserialize, Debug)]
 pub struct AccountState {
     pub amount: f64,
@@ -14,61 +10,8 @@ pub struct AccountState {
     pub block_height: u64,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct KeyPair {
-    pub public_key: String,
-    pub secret_key: String,
-    pub signing_key: [u8; 32],
-    pub verifying_key: [u8; 32],
-}
-
-impl KeyPair {
-    pub fn account_id(&self) -> String {
-        //from bs58 to hex string
-        let public_key_bytes = bs58::decode(&self.public_key).into_vec().unwrap();
-        let account_id = hex::encode(&public_key_bytes);
-        account_id
-    }
-    pub fn from_random() -> KeyPair {
-        let mut csprng = OsRng;
-        let secret_key = ed25519_dalek::SigningKey::generate(&mut csprng);
-        let public_key = secret_key.verifying_key();
-
-        let secret_key_bytes = secret_key.to_bytes();
-        let public_key_bytes = public_key.to_bytes();
-        let combined_key = [&secret_key_bytes[..], &public_key_bytes[..]].concat();
-        let public_key_str = bs58::encode(public_key_bytes);
-        let combined_key_str = bs58::encode(combined_key);
-
-        KeyPair {
-            public_key: public_key_str.into_string(),
-            secret_key: combined_key_str.into_string(),
-
-            signing_key: secret_key_bytes,
-            verifying_key: public_key_bytes,
-        }
-    }
-
-    pub fn from_string(secret_key: String) -> KeyPair {
-        let combined_key_bytes: [u8; 64] = bs58::decode(&secret_key)
-            .into_vec()
-            .unwrap()
-            .try_into()
-            .unwrap();
-
-        let secret_key_bytes: [u8; 32] = combined_key_bytes[..32].try_into().unwrap();
-        let public_key_bytes: [u8; 32] = combined_key_bytes[32..].try_into().unwrap();
-
-        let secret_key_str = bs58::encode(secret_key_bytes);
-        let public_key_str = bs58::encode(public_key_bytes);
-
-        KeyPair {
-            public_key: public_key_str.into_string(),
-            secret_key: secret_key_str.into_string(),
-            signing_key: secret_key_bytes,
-            verifying_key: public_key_bytes,
-        }
-    }
+pub struct Near {
+    pub rpc_url: String,
 }
 
 impl Near {
@@ -128,8 +71,15 @@ async fn main() {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
+    use base64::Engine;
+    use ed25519_dalek::Signature;
+    use ed25519_dalek::Verifier;
+    use ed25519_dalek::VerifyingKey;
+    use key_pair::KeyPair;
+    use key_pair::KeyPairTrait;
     #[test]
     fn test_account_id() {
         let new_key_pair = KeyPair::from_random();
@@ -140,5 +90,32 @@ mod tests {
         let test_account_id = test_key_pair.account_id();
 
         assert_eq!(account_id, test_account_id);
+    }
+
+    #[test]
+    fn sign_and_verify_message() {
+        let new_key_pair = KeyPair::from_random();
+        let verify_key = VerifyingKey::from_bytes(&new_key_pair.verifying_key).unwrap();
+        let message = "hello world".to_string();
+        let signature = new_key_pair.sign_message(message.clone());
+
+        //Verify
+        let decoded_signature: [u8; 64] = base64::engine::general_purpose::STANDARD_NO_PAD
+            .decode(signature.as_bytes())
+            .unwrap()
+            .try_into()
+            .unwrap();
+        let received_signature = Signature::from_bytes(&decoded_signature);
+        let is_valid = verify_key
+            .verify(&message.as_bytes(), &received_signature)
+            .is_ok();
+
+        let failed_signature = Signature::from_bytes(&[0u8; 64]);
+        let is_invalid = verify_key
+            .verify(&message.as_bytes(), &failed_signature)
+            .is_ok();
+
+        assert_eq!(is_valid, true);
+        assert_eq!(is_invalid, false);
     }
 }
